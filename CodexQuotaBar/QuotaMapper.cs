@@ -31,7 +31,7 @@ public static class QuotaMapper
             fiveHour ?? UnknownWindow(),
             weekly ?? UnknownWindow(),
             DateTimeOffset.Now,
-            "Codex 本地登录态");
+            "ChatGPT / Codex 共享额度");
     }
 
     private static JsonElement SelectSnapshot(JsonElement result)

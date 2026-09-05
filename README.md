@@ -37,7 +37,9 @@ powershell -ExecutionPolicy Bypass -File .\Install.ps1 -StartWithWindows
 
 - Windows 10/11
 - [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
-- 已安装并登录 Codex 桌面版或 Codex CLI，且 `codex.exe` 可从 `PATH` 找到
+- 已安装并登录 ChatGPT Windows 桌面版、VS Code Codex 扩展或 Codex CLI（任一即可）
+
+应用会自动查找 ChatGPT 桌面版和 VS Code 扩展自带的 `codex.exe`，不要求另装一个“Codex 桌面版”，也不要求手工配置 `PATH`。
 
 ## 本地运行
 
@@ -63,7 +65,9 @@ ChatGPT 桌面版、Codex CLI 和 VS Code Codex 扩展使用同一个 ChatGPT �
 
 ## 数据与隐私
 
-应用启动本机 `codex app-server --stdio` 子进程，通过 JSONL 请求 `config/read` 和 `account/rateLimits/read`。它不读取浏览器 Cookie，不保存访问令牌，也不会把额度发送到其他服务器。
+应用启动本机 `codex app-server --stdio` 子进程，通过 JSONL 请求 `account/rateLimits/read`，并从共享的 `.codex` 配置显示当前模型。它不读取浏览器 Cookie，不保存访问令牌，也不会把额度发送到其他服务器。
+
+如果读取失败，可查看 `%TEMP%\CodexQuotaBar.log`；日志只记录连接阶段，不记录额度响应、密钥或访问令牌。
 
 `codex app-server` 目前仍标记为实验性接口。如果未来协议发生变化，应用会显示刷新错误；更新本机 Codex 或本项目即可适配。
 

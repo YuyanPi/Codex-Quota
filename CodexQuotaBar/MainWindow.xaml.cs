@@ -48,7 +48,7 @@ public partial class MainWindow : Window
         RefreshButton.IsEnabled = false;
         MessagePanel.Visibility = Visibility.Collapsed;
 
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         try
         {
             await using var client = await CodexAppServerClient.StartAsync(timeout.Token);
@@ -57,7 +57,7 @@ public partial class MainWindow : Window
         }
         catch (OperationCanceledException)
         {
-            ShowError("读取超时。请确认 Codex 桌面版或 CLI 已安装并完成登录，然后重试。");
+            ShowError("读取超时。请打开 ChatGPT 桌面版或 VS Code Codex，确认已用 ChatGPT 账户登录，然后重试。");
         }
         catch (Exception ex)
         {
