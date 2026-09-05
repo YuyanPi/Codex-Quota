@@ -30,9 +30,8 @@ public partial class MainWindow : Window
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         var area = SystemParameters.WorkArea;
-        Left = area.Right - Width - 16;
-        Top = area.Top + 16;
-        Height = Math.Min(Height, area.Height - 32);
+        Left = area.Right - Width - 12;
+        Top = area.Bottom - Height - 12;
         _refreshTimer.Start();
         await RefreshAsync();
     }
@@ -73,9 +72,8 @@ public partial class MainWindow : Window
     private void RenderSnapshot(QuotaSnapshot snapshot)
     {
         ModelText.Text = snapshot.ModelName;
-        RenderWindow(snapshot.FiveHour, FiveProgress, FivePercentText, FiveStatusText, FiveStatusDot);
-        RenderWindow(snapshot.Weekly, WeekProgress, WeekPercentText, WeekStatusText, WeekStatusDot);
-        SourceText.Text = snapshot.SourceName;
+        RenderWindow(snapshot.FiveHour, FiveProgress, FivePercentText);
+        RenderWindow(snapshot.Weekly, WeekProgress, WeekPercentText);
         UpdatedText.Text = $"更新 {snapshot.FetchedAt:HH:mm:ss}";
         UpdateResetLabels();
     }
@@ -83,27 +81,21 @@ public partial class MainWindow : Window
     private static void RenderWindow(
         QuotaWindow window,
         System.Windows.Controls.ProgressBar progress,
-        System.Windows.Controls.TextBlock percent,
-        System.Windows.Controls.TextBlock status,
-        System.Windows.Shapes.Ellipse dot)
+        System.Windows.Controls.TextBlock percent)
     {
         if (window.RemainingPercent is not int remaining)
         {
             progress.Value = 0;
             progress.Foreground = EmptyBrush;
             percent.Text = "--%";
-            status.Text = "暂不可用";
-            dot.Fill = EmptyBrush;
             return;
         }
 
-        var (color, label) = GetStatus(remaining);
+        var color = GetStatusColor(remaining);
         progress.Value = remaining;
         progress.Foreground = color;
         percent.Text = $"{remaining}%";
         percent.Foreground = color;
-        status.Text = label;
-        dot.Fill = color;
     }
 
     private void UpdateResetLabels()
@@ -125,27 +117,22 @@ public partial class MainWindow : Window
         }
 
         var local = value.Value.ToLocalTime();
-        var remaining = local - DateTimeOffset.Now;
-        if (remaining <= TimeSpan.Zero)
+        if (local <= DateTimeOffset.Now)
         {
             return "即将刷新";
         }
 
-        var countdown = remaining.TotalDays >= 1
-            ? $"{(int)remaining.TotalDays}天{remaining.Hours}小时后"
-            : remaining.TotalHours >= 1
-                ? $"{(int)remaining.TotalHours}小时{remaining.Minutes}分后"
-                : $"{Math.Max(1, remaining.Minutes)}分钟后";
-
-        return $"{local:MM-dd HH:mm} · {countdown}";
+        return local.Date == DateTimeOffset.Now.Date
+            ? $"重置 {local:HH:mm}"
+            : $"重置 {local:MM-dd HH:mm}";
     }
 
-    private static (Brush Color, string Label) GetStatus(int remaining) => remaining switch
+    private static Brush GetStatusColor(int remaining) => remaining switch
     {
-        >= 51 => (PlentyBrush, "余量充足"),
-        >= 21 => (ModerateBrush, "余量适中"),
-        >= 1 => (TightBrush, "余量紧张"),
-        _ => (EmptyBrush, "已用尽")
+        >= 51 => PlentyBrush,
+        >= 21 => ModerateBrush,
+        >= 1 => TightBrush,
+        _ => EmptyBrush
     };
 
     private void ShowError(string message)
@@ -164,8 +151,6 @@ public partial class MainWindow : Window
             DragMove();
         }
     }
-
-    private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
 
     private void ToggleTopmost_Click(object sender, RoutedEventArgs e)
     {
