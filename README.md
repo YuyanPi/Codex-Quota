@@ -1,6 +1,6 @@
 # Codex Quota Bar
 
-一个常驻 Windows 桌面右侧的 Codex 额度看板，显示当前 GPT 模型、5 小时额度、周额度、状态颜色和预计重置时间。
+一个小巧的 Windows 桌面 Codex 额度看板，显示当前 GPT 模型、5 小时额度、周额度、状态颜色和预计重置时间。默认窗口约 `300 × 360 px`，可以拖到屏幕任意位置，也可以取消置顶以避免遮挡工作区。
 
 ## 功能
 
@@ -9,7 +9,29 @@
 - 绿色（51%–100%）、黄色（21%–50%）、红色（1%–20%）、灰色（0%）
 - 显示当前模型、额度状态、重置时间和倒计时
 - 每 60 秒自动刷新，也可手动刷新
-- 置顶、可拖动、可缩放的 Windows 侧边栏
+- 紧凑、置顶、可拖动、可缩放；标题栏圆点按钮可取消置顶
+
+## 推荐安装：只在 GitHub 构建，本机不改源码
+
+1. 打开仓库的 **Actions** 页面，选择 **Build Windows packages**。
+2. 打开最新一次成功运行，在页面底部下载 `CodexQuotaBar-Windows`。
+3. 在 D 盘创建 `D:\Codex-Quota\Downloads`，把下载内容解压到这里。
+4. 选择需要的版本：
+   - `CodexQuotaBar-lite-win-x64.zip`：体积小，需要本机已有 .NET 8 Desktop Runtime。
+   - `CodexQuotaBar-standalone-win-x64.zip`：体积较大，但无需另装 .NET。
+5. 再次解压所选压缩包，双击 `CodexQuotaBar.exe` 即可便携运行。
+
+如果希望固定安装，在解压目录打开 PowerShell，运行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Install.ps1
+```
+
+默认安装到 `D:\Codex-Quota\App` 并创建桌面快捷方式。需要开机启动时运行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Install.ps1 -StartWithWindows
+```
 
 ## 运行条件
 
@@ -30,6 +52,14 @@ dotnet publish .\CodexQuotaBar\CodexQuotaBar.csproj -c Release -r win-x64 --self
 ```
 
 输出位于 `CodexQuotaBar\bin\Release\net8.0-windows\win-x64\publish`。
+
+## GitHub 自动发布
+
+每次推送到 `main`，GitHub Actions 都会自动构建两个 Windows 压缩包。推送 `v1.0.0` 这类标签时，还会自动创建 GitHub Release。本机只需下载 Release，不需要保存或修改源码。
+
+## 桌面版与 VS Code 插件
+
+ChatGPT 桌面版、Codex CLI 和 VS Code Codex 扩展使用同一个 ChatGPT 账号登录时，共用同一账户额度。不要在其中一处改用 API Key，否则那一处会切换到 API 按量计费口径。
 
 ## 数据与隐私
 

@@ -167,6 +167,13 @@ public partial class MainWindow : Window
 
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
 
+    private void ToggleTopmost_Click(object sender, RoutedEventArgs e)
+    {
+        Topmost = !Topmost;
+        TopmostButton.Content = Topmost ? "◉" : "○";
+        TopmostButton.ToolTip = Topmost ? "取消置顶" : "保持置顶";
+    }
+
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
     private static SolidColorBrush BrushFrom(string hex)
