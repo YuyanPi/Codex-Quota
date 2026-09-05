@@ -7,5 +7,9 @@
     <Nullable>enable</Nullable>
     <AssemblyName>CodexQuotaBar</AssemblyName>
     <RootNamespace>CodexQuotaBar</RootNamespace>
+    <ApplicationIcon>Assets\carrot.ico</ApplicationIcon>
   </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="Assets\carrot.ico" />
+  </ItemGroup>
 </Project>
