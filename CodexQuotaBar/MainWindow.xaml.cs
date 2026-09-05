@@ -71,7 +71,6 @@ public partial class MainWindow : Window
 
     private void RenderSnapshot(QuotaSnapshot snapshot)
     {
-        ModelText.Text = snapshot.ModelName;
         RenderWindow(snapshot.FiveHour, FiveProgress, FivePercentText);
         RenderWindow(snapshot.Weekly, WeekProgress, WeekPercentText);
         UpdatedText.Text = $"更新 {snapshot.FetchedAt:HH:mm:ss}";
