@@ -81,7 +81,7 @@ public sealed class CodexAppServerClient : IAsyncDisposable
             "initialize",
             new
             {
-                clientInfo = new { name = "codex_quota_bar", title = "Codex Quota Bar", version = "1.0.4" },
+                clientInfo = new { name = "codex_quota_bar", title = "Codex Quota Bar", version = "1.0.5" },
                 capabilities = new { experimentalApi = true }
             },
             cancellationToken);
@@ -169,7 +169,7 @@ public sealed class CodexAppServerClient : IAsyncDisposable
     {
         try
         {
-            File.WriteAllText(DiagnosticLogPath, $"{DateTimeOffset.Now:O} Codex Quota Bar 1.0.4{Environment.NewLine}");
+            File.WriteAllText(DiagnosticLogPath, $"{DateTimeOffset.Now:O} Codex Quota Bar 1.0.5{Environment.NewLine}");
         }
         catch
         {
