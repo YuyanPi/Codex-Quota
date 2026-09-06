@@ -1,6 +1,6 @@
 # Codex Quota Bar
 
-一个小巧的 Windows 桌面 Codex 额度看板，显示 5 小时额度、周额度和预计重置时间。默认窗口约 `230 × 146 px`，每次启动显示在右下角，也可以拖动或取消置顶。
+一个小巧的 Windows 与 macOS 桌面 Codex 额度看板，显示 5 小时额度、周额度和预计重置时间。默认窗口约 `230 × 146 px`，每次启动显示在右下角，也可以拖动或取消置顶。
 
 ## 功能
 
@@ -10,7 +10,7 @@
 - 显示额度百分比、状态颜色和重置时间
 - 每 60 秒自动刷新，也可手动刷新
 - 紧凑、置顶、可拖动、可缩放；标题栏圆点按钮可取消置顶
-- 胡萝卜应用图标，用于 EXE、任务栏、窗口和桌面快捷方式
+- 统一应用图标，用于 Windows EXE、任务栏、窗口、桌面快捷方式和 macOS App
 
 ## 推荐安装：只在 GitHub 构建，本机不改源码
 
@@ -47,6 +47,17 @@ powershell -ExecutionPolicy Bypass -File .\Install.ps1 -StartWithWindows
 ```powershell
 dotnet run --project .\CodexQuotaBar\CodexQuotaBar.csproj
 ```
+
+### macOS
+
+macOS 版本使用系统自带的 AppKit 和 Objective-C 工具链，不需要安装 .NET。构建后会得到一个临时签名的原生应用：
+
+```bash
+./scripts/build-macos.sh
+open "artifacts/macos/Codex Quota Bar.app"
+```
+
+如需固定安装，可将应用复制到 `/Applications` 或用户的 `~/Applications` 目录。
 
 ## 构建单文件版本
 

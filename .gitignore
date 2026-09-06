@@ -5,3 +5,4 @@ obj/
 *.suo
 work/
 outputs/
+artifacts/
