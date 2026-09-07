@@ -31,14 +31,18 @@ jobs:
       - name: Create lite package
         shell: pwsh
         run: |
+          .\scripts\Build-WindowsIcon.ps1
           dotnet publish .\CodexQuotaBar\CodexQuotaBar.csproj -c Release -r win-x64 --self-contained false -o .\artifacts\lite
+          Copy-Item .\CodexQuotaBar\Assets\carrot.ico .\artifacts\lite\carrot.ico
           Copy-Item .\scripts\Install.ps1 .\artifacts\lite\Install.ps1
           Compress-Archive -Path .\artifacts\lite\* -DestinationPath .\artifacts\CodexQuotaBar-lite-win-x64.zip
 
       - name: Create standalone package
         shell: pwsh
         run: |
+          .\scripts\Build-WindowsIcon.ps1
           dotnet publish .\CodexQuotaBar\CodexQuotaBar.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o .\artifacts\standalone
+          Copy-Item .\CodexQuotaBar\Assets\carrot.ico .\artifacts\standalone\carrot.ico
           Copy-Item .\scripts\Install.ps1 .\artifacts\standalone\Install.ps1
           Compress-Archive -Path .\artifacts\standalone\* -DestinationPath .\artifacts\CodexQuotaBar-standalone-win-x64.zip
 

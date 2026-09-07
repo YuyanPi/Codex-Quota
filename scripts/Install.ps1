@@ -21,7 +21,12 @@ $shell = New-Object -ComObject WScript.Shell
 $desktopShortcut = $shell.CreateShortcut("$env:USERPROFILE\Desktop\Codex Quota Bar.lnk")
 $desktopShortcut.TargetPath = Join-Path $resolvedTarget 'CodexQuotaBar.exe'
 $desktopShortcut.WorkingDirectory = $resolvedTarget
-$desktopShortcut.IconLocation = "$(Join-Path $resolvedTarget 'CodexQuotaBar.exe'),0"
+$shortcutIcon = Join-Path $resolvedTarget 'carrot.ico'
+if (Test-Path -LiteralPath $shortcutIcon) {
+    $desktopShortcut.IconLocation = "$shortcutIcon,0"
+} else {
+    $desktopShortcut.IconLocation = "$(Join-Path $resolvedTarget 'CodexQuotaBar.exe'),0"
+}
 $desktopShortcut.Description = 'Codex quota desktop bar'
 $desktopShortcut.Save()
 
