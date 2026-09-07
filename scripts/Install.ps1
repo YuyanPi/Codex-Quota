@@ -9,7 +9,7 @@ $resolvedSource = [System.IO.Path]::GetFullPath($sourceDirectory)
 $resolvedTarget = [System.IO.Path]::GetFullPath($InstallDirectory)
 
 if ($resolvedSource.TrimEnd('\') -eq $resolvedTarget.TrimEnd('\')) {
-    throw '请先把压缩包解压到 D:\Codex-Quota\Downloads，再运行 Install.ps1。'
+    throw 'Extract the package to D:\Codex-Quota\Downloads before running Install.ps1.'
 }
 
 New-Item -ItemType Directory -Path $resolvedTarget -Force | Out-Null
@@ -22,7 +22,7 @@ $desktopShortcut = $shell.CreateShortcut("$env:USERPROFILE\Desktop\Codex Quota B
 $desktopShortcut.TargetPath = Join-Path $resolvedTarget 'CodexQuotaBar.exe'
 $desktopShortcut.WorkingDirectory = $resolvedTarget
 $desktopShortcut.IconLocation = "$(Join-Path $resolvedTarget 'CodexQuotaBar.exe'),0"
-$desktopShortcut.Description = 'Codex 额度桌面看板'
+$desktopShortcut.Description = 'Codex quota desktop bar'
 $desktopShortcut.Save()
 
 if ($StartWithWindows) {
@@ -30,5 +30,5 @@ if ($StartWithWindows) {
     Copy-Item "$env:USERPROFILE\Desktop\Codex Quota Bar.lnk" (Join-Path $startup 'Codex Quota Bar.lnk') -Force
 }
 
-Write-Host "安装完成：$resolvedTarget"
-Write-Host '已创建桌面快捷方式。'
+Write-Host "Installed: $resolvedTarget"
+Write-Host 'Desktop shortcut created.'
