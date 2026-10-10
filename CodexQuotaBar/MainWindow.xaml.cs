@@ -302,25 +302,29 @@ public partial class MainWindow : Window
         var screen = Screen.FromPoint(new System.Drawing.Point((int)releasePoint.X, (int)releasePoint.Y));
         var dpi = VisualTreeHelper.GetDpi(this);
         var work = screen.WorkingArea;
-        var leftPx = PointToScreen(new Point(0, 0)).X;
-        var widthPx = ActualWidth * dpi.DpiScaleX;
-        var leftDistance = leftPx - work.Left;
-        var rightDistance = work.Right - (leftPx + widthPx);
+        var screenBounds = screen.Bounds;
+        var surfaceTopLeft = FloatingSurface.PointToScreen(new Point(0, 0));
+        var surfaceTopRight = FloatingSurface.PointToScreen(new Point(FloatingSurface.ActualWidth, 0));
+        var leftPx = surfaceTopLeft.X;
+        var rightPx = surfaceTopRight.X;
+        var widthPx = rightPx - leftPx;
+        var leftDistance = leftPx - screenBounds.Left;
+        var rightDistance = screenBounds.Right - rightPx;
         var nearLeftEdge = leftDistance <= 0;
         var nearRightEdge = rightDistance <= 0;
         if (nearLeftEdge || nearRightEdge)
         {
             var dockLeft = nearLeftEdge && (!nearRightEdge || leftDistance <= rightDistance);
             var targetPx = dockLeft
-                ? work.Left - widthPx / 2
-                : work.Right - widthPx / 2;
+                ? screenBounds.Left - widthPx / 2
+                : screenBounds.Right - widthPx / 2;
             Left += (targetPx - leftPx) / dpi.DpiScaleX;
             SetFloatingValueAlignment(dockLeft ? HorizontalAlignment.Right : HorizontalAlignment.Left);
         }
         else
         {
-            var maxLeft = Math.Max(work.Left, work.Right - widthPx);
-            var clampedLeftPx = Math.Clamp(leftPx, work.Left, maxLeft);
+            var maxLeft = Math.Max(screenBounds.Left, screenBounds.Right - widthPx);
+            var clampedLeftPx = Math.Clamp(leftPx, screenBounds.Left, maxLeft);
             Left += (clampedLeftPx - leftPx) / dpi.DpiScaleX;
             SetFloatingValueAlignment(HorizontalAlignment.Center);
         }
@@ -342,19 +346,21 @@ public partial class MainWindow : Window
         }
 
         var dpi = VisualTreeHelper.GetDpi(this);
-        var leftPx = PointToScreen(new Point(0, 0)).X;
-        var widthPx = Width * dpi.DpiScaleX;
+        var surfaceTopLeft = FloatingSurface.PointToScreen(new Point(0, 0));
+        var surfaceTopRight = FloatingSurface.PointToScreen(new Point(FloatingSurface.ActualWidth, 0));
+        var leftPx = surfaceTopLeft.X;
+        var widthPx = surfaceTopRight.X - leftPx;
         var tolerancePx = 4 * dpi.DpiScaleX;
         foreach (var screen in Screen.AllScreens)
         {
-            var work = screen.WorkingArea;
-            if (Math.Abs(leftPx - (work.Right - widthPx / 2)) <= tolerancePx)
+            var bounds = screen.Bounds;
+            if (Math.Abs(leftPx - (bounds.Right - widthPx / 2)) <= tolerancePx)
             {
                 SetFloatingValueAlignment(HorizontalAlignment.Left);
                 return;
             }
 
-            if (Math.Abs(leftPx - (work.Left - widthPx / 2)) <= tolerancePx)
+            if (Math.Abs(leftPx - (bounds.Left - widthPx / 2)) <= tolerancePx)
             {
                 SetFloatingValueAlignment(HorizontalAlignment.Right);
                 return;
