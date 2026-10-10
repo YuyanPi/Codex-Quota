@@ -6,6 +6,7 @@
         Width="230" Height="146" MinWidth="230" MinHeight="146"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ResizeMode="NoResize" ShowInTaskbar="True"
+        Closing="Window_Closing"
         FontFamily="{StaticResource UiFont}">
     <Window.Resources>
         <SolidColorBrush x:Key="PanelBrush" Color="#F2161A22"/>
@@ -29,7 +30,18 @@
         </Style>
     </Window.Resources>
 
-    <Border Background="{StaticResource PanelBrush}" CornerRadius="10" BorderBrush="#FF303746" BorderThickness="1">
+    <Window.ContextMenu>
+        <ContextMenu>
+            <MenuItem Header="展开主界面" Click="OpenMainWindow_Click"/>
+            <MenuItem Header="缩小为悬浮球" Click="Compact_Click"/>
+            <Separator/>
+            <MenuItem Header="立即刷新" Click="Refresh_Click"/>
+            <MenuItem x:Name="ContextTopmostItem" Header="取消置顶" Click="ToggleTopmost_Click"/>
+            <MenuItem Header="退出" Click="Exit_Click"/>
+        </ContextMenu>
+    </Window.ContextMenu>
+    <Grid>
+    <Border x:Name="MainSurface" Background="{StaticResource PanelBrush}" CornerRadius="10" BorderBrush="#FF303746" BorderThickness="1">
         <Border.Effect>
             <DropShadowEffect BlurRadius="14" ShadowDepth="2" Opacity="0.34" Color="#FF000000"/>
         </Border.Effect>
@@ -49,6 +61,7 @@
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button x:Name="RefreshButton" Content="↻" ToolTip="立即刷新" FontSize="16" Click="Refresh_Click"/>
                     <Button x:Name="TopmostButton" Content="◉" ToolTip="取消置顶" Click="ToggleTopmost_Click"/>
+                    <Button Content="●" ToolTip="缩小为悬浮球" Click="Compact_Click"/>
                     <Button Content="×" ToolTip="关闭" FontSize="15" Click="Close_Click"/>
                 </StackPanel>
             </Grid>
@@ -91,4 +104,30 @@
             </Border>
         </Grid>
     </Border>
+    <Border x:Name="FloatingSurface" Width="48" Height="48" CornerRadius="24"
+            Background="{StaticResource PanelBrush}" BorderBrush="#FF303746" BorderThickness="1"
+            Visibility="Collapsed" MouseLeftButtonDown="FloatingSurface_MouseLeftButtonDown"
+            MouseMove="FloatingSurface_MouseMove" MouseLeftButtonUp="FloatingSurface_MouseLeftButtonUp"
+            MouseEnter="FloatingSurface_MouseEnter" MouseLeave="FloatingSurface_MouseLeave">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="14" ShadowDepth="2" Opacity="0.34" Color="#FF000000"/>
+        </Border.Effect>
+        <Border.ToolTip>
+            <ToolTip Content="5h / 周"/>
+        </Border.ToolTip>
+        <Grid Margin="5,4">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="1"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <TextBlock x:Name="FloatingFiveText" Grid.Row="0" Text="--" FontSize="12" FontWeight="Bold"
+                       Foreground="#FF788291" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <Border Grid.Row="1" Height="1" Background="#FF687384" Margin="5,0"/>
+            <TextBlock x:Name="FloatingWeekText" Grid.Row="2" Text="--" FontSize="12" FontWeight="Bold"
+                       Foreground="#FF788291" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Grid>
+    </Border>
+    </Grid>
 </Window>
+
