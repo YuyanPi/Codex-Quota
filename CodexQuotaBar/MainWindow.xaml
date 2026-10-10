@@ -32,7 +32,7 @@
 
     <Window.ContextMenu>
         <ContextMenu>
-            <MenuItem Header="打开主界面" Click="OpenMainWindow_Click"/>
+            <MenuItem Header="展开主界面" Click="OpenMainWindow_Click"/>
             <MenuItem Header="缩小为悬浮球" Click="Compact_Click"/>
             <MenuItem Header="关闭悬浮功能" Click="DisableFloating_Click"/>
             <Separator/>
