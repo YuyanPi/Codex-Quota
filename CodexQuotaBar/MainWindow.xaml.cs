@@ -231,6 +231,7 @@ public partial class MainWindow : Window
 
     private void FloatingSurface_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        Opacity = 1.0;
         if (e.ClickCount == 2)
         {
             _isDragging = false;
@@ -257,6 +258,7 @@ public partial class MainWindow : Window
 
         var currentScreen = FloatingSurface.PointToScreen(e.GetPosition(FloatingSurface));
         var dpi = VisualTreeHelper.GetDpi(this);
+        Opacity = 1.0;
         Left = _dragStartLeft + (currentScreen.X - _dragStartScreen.X) / dpi.DpiScaleX;
         Top = _dragStartTop + (currentScreen.Y - _dragStartScreen.Y) / dpi.DpiScaleY;
     }
@@ -270,22 +272,39 @@ public partial class MainWindow : Window
 
         _isDragging = false;
         FloatingSurface.ReleaseMouseCapture();
-        SnapToNearestHorizontalEdge();
+        SnapToNearestHorizontalEdge(e);
+        Opacity = 0.55;
         SavePreferences();
         e.Handled = true;
     }
 
-    private void SnapToNearestHorizontalEdge()
+    private void FloatingSurface_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
     {
-        var center = PointToScreen(new Point(ActualWidth / 2, ActualHeight / 2));
-        var screen = Screen.FromPoint(new System.Drawing.Point((int)center.X, (int)center.Y));
+        if (_isCompact)
+        {
+            Opacity = 1.0;
+        }
+    }
+
+    private void FloatingSurface_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (_isCompact && !_isDragging)
+        {
+            Opacity = 0.55;
+        }
+    }
+
+    private void SnapToNearestHorizontalEdge(System.Windows.Input.MouseEventArgs e)
+    {
+        var releasePoint = FloatingSurface.PointToScreen(e.GetPosition(FloatingSurface));
+        var screen = Screen.FromPoint(new System.Drawing.Point((int)releasePoint.X, (int)releasePoint.Y));
         var dpi = VisualTreeHelper.GetDpi(this);
         var work = screen.WorkingArea;
         var leftPx = PointToScreen(new Point(0, 0)).X;
         var widthPx = ActualWidth * dpi.DpiScaleX;
         var targetPx = leftPx - work.Left <= work.Right - (leftPx + widthPx)
-            ? work.Left + 6
-            : work.Right - widthPx - 6;
+            ? work.Left - widthPx / 2
+            : work.Right - widthPx / 2;
         Left += (targetPx - leftPx) / dpi.DpiScaleX;
 
         var topPx = PointToScreen(new Point(0, 0)).Y;
