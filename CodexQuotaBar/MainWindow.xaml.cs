@@ -8,6 +8,7 @@ using System.Windows.Threading;
 using Brush = System.Windows.Media.Brush;
 using Color = System.Windows.Media.Color;
 using ColorConverter = System.Windows.Media.ColorConverter;
+using HorizontalAlignment = System.Windows.HorizontalAlignment;
 using Point = System.Windows.Point;
 
 namespace CodexQuotaBar;
@@ -82,6 +83,7 @@ public partial class MainWindow : Window
         }
 
         ApplyViewState();
+        UpdateFloatingValueAlignmentFromPosition();
         _refreshTimer.Start();
         await RefreshAsync();
     }
@@ -302,10 +304,27 @@ public partial class MainWindow : Window
         var work = screen.WorkingArea;
         var leftPx = PointToScreen(new Point(0, 0)).X;
         var widthPx = ActualWidth * dpi.DpiScaleX;
-        var targetPx = leftPx - work.Left <= work.Right - (leftPx + widthPx)
-            ? work.Left - widthPx / 2
-            : work.Right - widthPx / 2;
-        Left += (targetPx - leftPx) / dpi.DpiScaleX;
+        var leftDistance = leftPx - work.Left;
+        var rightDistance = work.Right - (leftPx + widthPx);
+        var snapThresholdPx = 48 * dpi.DpiScaleX;
+        var nearLeftEdge = leftDistance <= snapThresholdPx;
+        var nearRightEdge = rightDistance <= snapThresholdPx;
+        if (nearLeftEdge || nearRightEdge)
+        {
+            var dockLeft = nearLeftEdge && (!nearRightEdge || leftDistance <= rightDistance);
+            var targetPx = dockLeft
+                ? work.Left - widthPx / 2
+                : work.Right - widthPx / 2;
+            Left += (targetPx - leftPx) / dpi.DpiScaleX;
+            SetFloatingValueAlignment(dockLeft ? HorizontalAlignment.Right : HorizontalAlignment.Left);
+        }
+        else
+        {
+            var maxLeft = Math.Max(work.Left, work.Right - widthPx);
+            var clampedLeftPx = Math.Clamp(leftPx, work.Left, maxLeft);
+            Left += (clampedLeftPx - leftPx) / dpi.DpiScaleX;
+            SetFloatingValueAlignment(HorizontalAlignment.Center);
+        }
 
         var topPx = PointToScreen(new Point(0, 0)).Y;
         var heightPx = ActualHeight * dpi.DpiScaleY;
@@ -313,6 +332,43 @@ public partial class MainWindow : Window
         var maxTop = work.Bottom - heightPx - 6;
         var clampedTopPx = Math.Clamp(topPx, minTop, Math.Max(minTop, maxTop));
         Top += (clampedTopPx - topPx) / dpi.DpiScaleY;
+    }
+
+    private void UpdateFloatingValueAlignmentFromPosition()
+    {
+        if (!_isCompact)
+        {
+            SetFloatingValueAlignment(HorizontalAlignment.Center);
+            return;
+        }
+
+        var dpi = VisualTreeHelper.GetDpi(this);
+        var leftPx = PointToScreen(new Point(0, 0)).X;
+        var widthPx = Width * dpi.DpiScaleX;
+        var tolerancePx = 4 * dpi.DpiScaleX;
+        foreach (var screen in Screen.AllScreens)
+        {
+            var work = screen.WorkingArea;
+            if (Math.Abs(leftPx - (work.Right - widthPx / 2)) <= tolerancePx)
+            {
+                SetFloatingValueAlignment(HorizontalAlignment.Left);
+                return;
+            }
+
+            if (Math.Abs(leftPx - (work.Left - widthPx / 2)) <= tolerancePx)
+            {
+                SetFloatingValueAlignment(HorizontalAlignment.Right);
+                return;
+            }
+        }
+
+        SetFloatingValueAlignment(HorizontalAlignment.Center);
+    }
+
+    private void SetFloatingValueAlignment(HorizontalAlignment alignment)
+    {
+        FloatingFiveText.HorizontalAlignment = alignment;
+        FloatingWeekText.HorizontalAlignment = alignment;
     }
 
     private void ToggleTopmost_Click(object sender, RoutedEventArgs e)
@@ -342,8 +398,8 @@ public partial class MainWindow : Window
     {
         MainSurface.Visibility = _isCompact ? Visibility.Collapsed : Visibility.Visible;
         FloatingSurface.Visibility = _isCompact ? Visibility.Visible : Visibility.Collapsed;
-        Width = _isCompact ? 72 : 230;
-        Height = _isCompact ? 72 : 146;
+        Width = _isCompact ? 48 : 230;
+        Height = _isCompact ? 48 : 146;
         MinWidth = Width;
         MinHeight = Height;
         ShowInTaskbar = !_isCompact;
