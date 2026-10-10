@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text.Json;
 
 namespace CodexQuotaBar;
@@ -47,3 +48,4 @@ internal sealed class WindowPreferences
         }
     }
 }
+

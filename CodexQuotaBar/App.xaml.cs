@@ -2,6 +2,7 @@ using System.Windows;
 
 namespace CodexQuotaBar;
 
-public partial class App : Application
+public partial class App : System.Windows.Application
 {
 }
+
