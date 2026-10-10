@@ -398,6 +398,11 @@ public partial class MainWindow : Window
     {
         MainSurface.Visibility = _isCompact ? Visibility.Collapsed : Visibility.Visible;
         FloatingSurface.Visibility = _isCompact ? Visibility.Visible : Visibility.Collapsed;
+        if (!_isCompact)
+        {
+            Opacity = 1.0;
+        }
+
         Width = _isCompact ? 48 : 230;
         Height = _isCompact ? 48 : 146;
         MinWidth = Width;
