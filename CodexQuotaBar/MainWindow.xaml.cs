@@ -1,4 +1,7 @@
+using System.Text;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -13,13 +16,40 @@ public partial class MainWindow : Window
     private static readonly Brush EmptyBrush = BrushFrom("#788291");
 
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromSeconds(60) };
+    private readonly WindowPreferences _preferences = WindowPreferences.Load();
+    private readonly System.Windows.Controls.ToolTip _floatingToolTip = new();
+    private NotifyIcon? _trayIcon;
     private QuotaSnapshot? _snapshot;
+    private string? _lastError;
     private bool _refreshing;
+    private bool _floatingEnabled;
+    private bool _isCompact;
+    private bool _allowExit;
+    private bool _isDragging;
+    private Point _dragStartScreen;
+    private double _dragStartLeft;
+    private double _dragStartTop;
 
     public MainWindow()
     {
         InitializeComponent();
+        FloatingSurface.ToolTip = _floatingToolTip;
         Loaded += MainWindow_Loaded;
+        StateChanged += (_, _) =>
+        {
+            if (WindowState == WindowState.Minimized)
+            {
+                if (_floatingEnabled)
+                {
+                    WindowState = WindowState.Normal;
+                    SetCompact(true);
+                }
+                else
+                {
+                    ShowInTaskbar = true;
+                }
+            }
+        };
         _refreshTimer.Tick += async (_, _) =>
         {
             UpdateResetLabels();
@@ -29,9 +59,25 @@ public partial class MainWindow : Window
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        var area = SystemParameters.WorkArea;
-        Left = area.Right - Width - 12;
-        Top = area.Bottom - Height - 12;
+        _floatingEnabled = _preferences.FloatingEnabled;
+        _isCompact = _floatingEnabled && _preferences.IsCompact;
+        Topmost = _preferences.Topmost;
+        TopmostButton.Content = Topmost ? "◉" : "○";
+        TopmostButton.ToolTip = Topmost ? "取消置顶" : "保持置顶";
+        ContextTopmostItem.Header = Topmost ? "取消置顶" : "保持置顶";
+        if (_floatingEnabled)
+        {
+            EnsureTrayIcon();
+        }
+
+        if (!RestoreWindowPosition())
+        {
+            var area = SystemParameters.WorkArea;
+            Left = area.Right - Width - 12;
+            Top = area.Bottom - Height - 12;
+        }
+
+        ApplyViewState();
         _refreshTimer.Start();
         await RefreshAsync();
     }
@@ -52,6 +98,7 @@ public partial class MainWindow : Window
         {
             await using var client = await CodexAppServerClient.StartAsync(timeout.Token);
             _snapshot = await client.ReadQuotaAsync(timeout.Token);
+            _lastError = null;
             RenderSnapshot(_snapshot);
         }
         catch (OperationCanceledException)
@@ -73,8 +120,11 @@ public partial class MainWindow : Window
     {
         RenderWindow(snapshot.FiveHour, FiveProgress, FivePercentText);
         RenderWindow(snapshot.Weekly, WeekProgress, WeekPercentText);
+        RenderFloatingValue(snapshot.FiveHour.RemainingPercent, FloatingFiveText);
+        RenderFloatingValue(snapshot.Weekly.RemainingPercent, FloatingWeekText);
         UpdatedText.Text = $"更新 {snapshot.FetchedAt:HH:mm:ss}";
         UpdateResetLabels();
+        UpdateFloatingToolTip();
     }
 
     private static void RenderWindow(
@@ -87,6 +137,7 @@ public partial class MainWindow : Window
             progress.Value = 0;
             progress.Foreground = EmptyBrush;
             percent.Text = "--%";
+            percent.Foreground = EmptyBrush;
             return;
         }
 
@@ -95,6 +146,12 @@ public partial class MainWindow : Window
         progress.Foreground = color;
         percent.Text = $"{remaining}%";
         percent.Foreground = color;
+    }
+
+    private static void RenderFloatingValue(int? remaining, System.Windows.Controls.TextBlock text)
+    {
+        text.Text = remaining?.ToString() ?? "--";
+        text.Foreground = remaining is int value ? GetStatusColor(value) : EmptyBrush;
     }
 
     private void UpdateResetLabels()
@@ -106,6 +163,20 @@ public partial class MainWindow : Window
 
         FiveResetText.Text = FormatReset(_snapshot.FiveHour.ResetsAt);
         WeekResetText.Text = FormatReset(_snapshot.Weekly.ResetsAt);
+    }
+
+    private void UpdateFloatingToolTip()
+    {
+        var five = _snapshot?.FiveHour.RemainingPercent?.ToString() ?? "--";
+        var weekly = _snapshot?.Weekly.RemainingPercent?.ToString() ?? "--";
+        var content = new StringBuilder($"5h {five} | 周 {weekly}");
+        if (_lastError is not null)
+        {
+            content.AppendLine();
+            content.Append("刷新失败：").Append(_lastError);
+        }
+
+        _floatingToolTip.Content = content.ToString();
     }
 
     private static string FormatReset(DateTimeOffset? value)
@@ -136,9 +207,12 @@ public partial class MainWindow : Window
 
     private void ShowError(string message)
     {
+        _lastError = message;
         MessageText.Text = message;
         MessagePanel.Visibility = Visibility.Visible;
         UpdatedText.Text = "刷新失败";
+        UpdateFloatingToolTip();
+        UpdateContextMenuState();
     }
 
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await RefreshAsync();
@@ -151,14 +225,261 @@ public partial class MainWindow : Window
         }
     }
 
+    private void FloatingSurface_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2)
+        {
+            _isDragging = false;
+            FloatingSurface.ReleaseMouseCapture();
+            SetCompact(false);
+            e.Handled = true;
+            return;
+        }
+
+        _dragStartScreen = FloatingSurface.PointToScreen(e.GetPosition(FloatingSurface));
+        _dragStartLeft = Left;
+        _dragStartTop = Top;
+        _isDragging = true;
+        FloatingSurface.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void FloatingSurface_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (!_isDragging || e.LeftButton != MouseButtonState.Pressed)
+        {
+            return;
+        }
+
+        var currentScreen = FloatingSurface.PointToScreen(e.GetPosition(FloatingSurface));
+        var dpi = VisualTreeHelper.GetDpi(this);
+        Left = _dragStartLeft + (currentScreen.X - _dragStartScreen.X) / dpi.DpiScaleX;
+        Top = _dragStartTop + (currentScreen.Y - _dragStartScreen.Y) / dpi.DpiScaleY;
+    }
+
+    private void FloatingSurface_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!_isDragging)
+        {
+            return;
+        }
+
+        _isDragging = false;
+        FloatingSurface.ReleaseMouseCapture();
+        SnapToNearestHorizontalEdge();
+        SavePreferences();
+        e.Handled = true;
+    }
+
+    private void SnapToNearestHorizontalEdge()
+    {
+        var center = PointToScreen(new Point(ActualWidth / 2, ActualHeight / 2));
+        var screen = Screen.FromPoint(new System.Drawing.Point((int)center.X, (int)center.Y));
+        var dpi = VisualTreeHelper.GetDpi(this);
+        var work = screen.WorkingArea;
+        var leftPx = PointToScreen(new Point(0, 0)).X;
+        var widthPx = ActualWidth * dpi.DpiScaleX;
+        var targetPx = leftPx - work.Left <= work.Right - (leftPx + widthPx)
+            ? work.Left + 6
+            : work.Right - widthPx - 6;
+        Left += (targetPx - leftPx) / dpi.DpiScaleX;
+
+        var topPx = PointToScreen(new Point(0, 0)).Y;
+        var heightPx = ActualHeight * dpi.DpiScaleY;
+        var minTop = work.Top + 6;
+        var maxTop = work.Bottom - heightPx - 6;
+        var clampedTopPx = Math.Clamp(topPx, minTop, Math.Max(minTop, maxTop));
+        Top += (clampedTopPx - topPx) / dpi.DpiScaleY;
+    }
+
     private void ToggleTopmost_Click(object sender, RoutedEventArgs e)
     {
         Topmost = !Topmost;
         TopmostButton.Content = Topmost ? "◉" : "○";
         TopmostButton.ToolTip = Topmost ? "取消置顶" : "保持置顶";
+        ContextTopmostItem.Header = Topmost ? "取消置顶" : "保持置顶";
+        SavePreferences();
     }
 
-    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+    private void Compact_Click(object sender, RoutedEventArgs e)
+    {
+        _floatingEnabled = true;
+        SetCompact(true);
+    }
+
+    private void SetCompact(bool compact)
+    {
+        _floatingEnabled = true;
+        _isCompact = compact;
+        ApplyViewState();
+        SavePreferences();
+    }
+
+    private void ApplyViewState()
+    {
+        MainSurface.Visibility = _isCompact ? Visibility.Collapsed : Visibility.Visible;
+        FloatingSurface.Visibility = _isCompact ? Visibility.Visible : Visibility.Collapsed;
+        Width = _isCompact ? 72 : 230;
+        Height = _isCompact ? 72 : 146;
+        MinWidth = Width;
+        MinHeight = Height;
+        ShowInTaskbar = !_isCompact;
+        EnsureTrayIconIfEnabled();
+        UpdateContextMenuState();
+    }
+
+    private void UpdateContextMenuState()
+    {
+        if (ContextMenu?.Items.Count > 2 && ContextMenu.Items[0] is MenuItem openItem &&
+            ContextMenu.Items[1] is MenuItem compactItem && ContextMenu.Items[2] is MenuItem disableItem)
+        {
+            openItem.Visibility = _isCompact ? Visibility.Visible : Visibility.Collapsed;
+            compactItem.Visibility = _isCompact ? Visibility.Collapsed : Visibility.Visible;
+            disableItem.Visibility = _floatingEnabled ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (ContextMenu?.Items.Count > 4 && ContextMenu.Items[4] is MenuItem refreshItem)
+        {
+            refreshItem.ToolTip = _lastError is null ? null : $"上次刷新失败：{_lastError}";
+        }
+    }
+
+    private void OpenMainWindow_Click(object sender, RoutedEventArgs e)
+    {
+        _floatingEnabled = true;
+        SetCompact(false);
+        Show();
+        WindowState = WindowState.Normal;
+        Activate();
+    }
+
+    private void DisableFloating_Click(object sender, RoutedEventArgs e)
+    {
+        _floatingEnabled = false;
+        _isCompact = false;
+        ApplyViewState();
+        Show();
+        WindowState = WindowState.Normal;
+        Activate();
+        SavePreferences();
+    }
+
+    private void EnsureTrayIconIfEnabled()
+    {
+        if (_floatingEnabled)
+        {
+            EnsureTrayIcon();
+            return;
+        }
+
+        if (_trayIcon is not null)
+        {
+            _trayIcon.Visible = false;
+            _trayIcon.Dispose();
+            _trayIcon = null;
+        }
+    }
+
+    private void TrayIcon_DoubleClick(object? sender, EventArgs e) => OpenMainWindow_Click(sender!, new RoutedEventArgs());
+
+    private void EnsureTrayIcon()
+    {
+        if (_trayIcon is not null)
+        {
+            return;
+        }
+
+        _trayIcon = new NotifyIcon
+        {
+            Icon = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath!)!,
+            Text = "Codex Quota Bar",
+            Visible = true,
+            ContextMenuStrip = new ContextMenuStrip()
+        };
+        _trayIcon.DoubleClick += TrayIcon_DoubleClick;
+        _trayIcon.ContextMenuStrip.Items.Add("打开主界面", null, (_, _) => OpenMainWindow_Click(this, new RoutedEventArgs()));
+        _trayIcon.ContextMenuStrip.Items.Add("关闭悬浮功能", null, (_, _) => DisableFloating_Click(this, new RoutedEventArgs()));
+        _trayIcon.ContextMenuStrip.Items.Add("立即刷新", null, async (_, _) => await RefreshAsync());
+        _trayIcon.ContextMenuStrip.Items.Add("切换置顶", null, (_, _) => ToggleTopmost_Click(this, new RoutedEventArgs()));
+        _trayIcon.ContextMenuStrip.Items.Add("退出", null, (_, _) => Exit_Click(this, new RoutedEventArgs()));
+    }
+
+    private void Close_Click(object sender, RoutedEventArgs e)
+    {
+        if (_floatingEnabled)
+        {
+            SetCompact(true);
+            return;
+        }
+
+        _allowExit = true;
+        Close();
+    }
+
+    private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (!_allowExit && _floatingEnabled)
+        {
+            e.Cancel = true;
+            SetCompact(true);
+            return;
+        }
+
+        SavePreferences();
+        _refreshTimer.Stop();
+        if (_trayIcon is not null)
+        {
+            _trayIcon.Visible = false;
+            _trayIcon.Dispose();
+            _trayIcon = null;
+        }
+    }
+
+    private void Exit_Click(object sender, RoutedEventArgs e)
+    {
+        _allowExit = true;
+        Close();
+    }
+
+    private bool RestoreWindowPosition()
+    {
+        if (!_preferences.HasPosition)
+        {
+            return false;
+        }
+
+        Left = _preferences.Left;
+        Top = _preferences.Top;
+        var topLeft = PointToScreen(new Point(0, 0));
+        var bottomRight = PointToScreen(new Point(Width, Height));
+        var bounds = new System.Drawing.Rectangle((int)topLeft.X, (int)topLeft.Y,
+            (int)(bottomRight.X - topLeft.X), (int)(bottomRight.Y - topLeft.Y));
+        var visibleOnAnyScreen = Screen.AllScreens.Any(screen => screen.WorkingArea.IntersectsWith(bounds));
+        if (visibleOnAnyScreen)
+        {
+            return true;
+        }
+
+        var area = SystemParameters.WorkArea;
+        Left = area.Right - Width - 12;
+        Top = area.Bottom - Height - 12;
+        return false;
+    }
+
+    private void SavePreferences()
+    {
+        if (!IsLoaded || !double.IsFinite(Left) || !double.IsFinite(Top))
+        {
+            return;
+        }
+
+        _preferences.FloatingEnabled = _floatingEnabled;
+        _preferences.IsCompact = _isCompact;
+        _preferences.Topmost = Topmost;
+        _preferences.Left = Left;
+        _preferences.Top = Top;
+        _preferences.Save();
+    }
 
     private static SolidColorBrush BrushFrom(string hex)
     {
