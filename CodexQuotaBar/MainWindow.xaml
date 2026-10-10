@@ -34,7 +34,6 @@
         <ContextMenu>
             <MenuItem Header="展开主界面" Click="OpenMainWindow_Click"/>
             <MenuItem Header="缩小为悬浮球" Click="Compact_Click"/>
-            <MenuItem Header="关闭悬浮功能" Click="DisableFloating_Click"/>
             <Separator/>
             <MenuItem Header="立即刷新" Click="Refresh_Click"/>
             <MenuItem x:Name="ContextTopmostItem" Header="取消置顶" Click="ToggleTopmost_Click"/>

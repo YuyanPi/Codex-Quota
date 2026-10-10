@@ -306,9 +306,8 @@ public partial class MainWindow : Window
         var widthPx = ActualWidth * dpi.DpiScaleX;
         var leftDistance = leftPx - work.Left;
         var rightDistance = work.Right - (leftPx + widthPx);
-        var snapThresholdPx = 48 * dpi.DpiScaleX;
-        var nearLeftEdge = leftDistance <= snapThresholdPx;
-        var nearRightEdge = rightDistance <= snapThresholdPx;
+        var nearLeftEdge = leftDistance <= 0;
+        var nearRightEdge = rightDistance <= 0;
         if (nearLeftEdge || nearRightEdge)
         {
             var dockLeft = nearLeftEdge && (!nearRightEdge || leftDistance <= rightDistance);
@@ -414,15 +413,14 @@ public partial class MainWindow : Window
 
     private void UpdateContextMenuState()
     {
-        if (ContextMenu?.Items.Count > 2 && ContextMenu.Items[0] is MenuItem openItem &&
-            ContextMenu.Items[1] is MenuItem compactItem && ContextMenu.Items[2] is MenuItem disableItem)
+        if (ContextMenu?.Items.Count > 1 && ContextMenu.Items[0] is MenuItem openItem &&
+            ContextMenu.Items[1] is MenuItem compactItem)
         {
             openItem.Visibility = _isCompact ? Visibility.Visible : Visibility.Collapsed;
             compactItem.Visibility = _isCompact ? Visibility.Collapsed : Visibility.Visible;
-            disableItem.Visibility = _floatingEnabled ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        if (ContextMenu?.Items.Count > 4 && ContextMenu.Items[4] is MenuItem refreshItem)
+        if (ContextMenu?.Items.Count > 3 && ContextMenu.Items[3] is MenuItem refreshItem)
         {
             refreshItem.ToolTip = _lastError is null ? null : $"上次刷新失败：{_lastError}";
         }
@@ -435,17 +433,6 @@ public partial class MainWindow : Window
         Show();
         WindowState = WindowState.Normal;
         Activate();
-    }
-
-    private void DisableFloating_Click(object sender, RoutedEventArgs e)
-    {
-        _floatingEnabled = false;
-        _isCompact = false;
-        ApplyViewState();
-        Show();
-        WindowState = WindowState.Normal;
-        Activate();
-        SavePreferences();
     }
 
     private void EnsureTrayIconIfEnabled()
@@ -481,8 +468,7 @@ public partial class MainWindow : Window
             ContextMenuStrip = new ContextMenuStrip()
         };
         _trayIcon.DoubleClick += TrayIcon_DoubleClick;
-        _trayIcon.ContextMenuStrip.Items.Add("打开主界面", null, (_, _) => OpenMainWindow_Click(this, new RoutedEventArgs()));
-        _trayIcon.ContextMenuStrip.Items.Add("关闭悬浮功能", null, (_, _) => DisableFloating_Click(this, new RoutedEventArgs()));
+        _trayIcon.ContextMenuStrip.Items.Add("展开主界面", null, (_, _) => OpenMainWindow_Click(this, new RoutedEventArgs()));
         _trayIcon.ContextMenuStrip.Items.Add("立即刷新", null, async (_, _) => await RefreshAsync());
         _trayIcon.ContextMenuStrip.Items.Add("切换置顶", null, (_, _) => ToggleTopmost_Click(this, new RoutedEventArgs()));
         _trayIcon.ContextMenuStrip.Items.Add("退出", null, (_, _) => Exit_Click(this, new RoutedEventArgs()));
